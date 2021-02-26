@@ -23,13 +23,16 @@ int main()
 	}
 	int argSize;
 	int fd[2];
-	if (pipe(fd) == -1) { fprintf(stderr,"Pipe failed"); return 1;}
+	bool check = false;
 	bool twoPart;
 	while (lop == 0){
+		check = false;
 		twoPart = false;
 		argSize = 0;
 		printf("\n isp$ ");
+		bzero(command, 20);
     		scanf("%[^\n]%*c", command); 
+    		if (pipe(fd) == -1) { fprintf(stderr,"Pipe failed"); return 1;}
     		for (int i = 0; command[i] != '\0' && twoPart == false; i++){
     			if (i == 0 && (command[i] == ' ' || command[i] != ' ' )){
     				if (command[i] != ' '){
@@ -56,8 +59,8 @@ int main()
 				if (pid == 0){ 
 					argv[argSize] = NULL;
 					dup2(fd[WRITE_END], STDOUT_FILENO);
-					close(fd[READ_END]);
     					close(fd[WRITE_END]);
+    					close(fd[READ_END]);
     					execvp(cmd, argv);
     					fprintf(stderr, "Failed to execute first '%s'\n", cmd);
 					exit(1);
@@ -68,14 +71,13 @@ int main()
 					if (pid < 0) { fprintf(stderr, "Fork failed"); return 1; }
 					if (pid == 0){
 						bzero(cmd, 20);
-						printf("cmd1: %s \n", cmd);
-						i++;
-						for (int j = i; command[j] != '\0'; j++){
+						argSize = 0;
+						for (int j = ++i; command[j] != '\0'; j++){
 							if (command[j] == ' ' || command[j] != ' ' ){
     								if (command[j] != ' '){
     									while (command[j] != '\0' && command[j] != ' '){
-    									strncat(cmd, &command[j], 1); 
-    									j++;
+    										strncat(cmd, &command[j], 1); 
+    										j++;
     									}
     								}
     								else{
@@ -86,27 +88,38 @@ int main()
     										j++;
     									}
     								}
+    								strcpy(*(argv + argSize), cmd);
+    								argSize++;
     							}
+    							else if (command[i] != ' '){
+								strncat(temp, &command[i], 1); 
+								strcpy(*(argv + argSize), temp);
+								check = true;
+							}
+							else{
+								argSize++;
+								bzero(temp, 20);
+							}				
 						}
-						printf("cmd2: %s \n", cmd);
-            					strcpy(*(argv + 0), cmd);
-            					argv[argSize - 1] = NULL;
+						if (check){
+							argSize++;
+							argv[argSize] = NULL;
+						}
+						else
+            						argv[argSize] = NULL;
     						dup2(fd[READ_END], STDIN_FILENO);
-        					close(fd[WRITE_END]);
         					close(fd[READ_END]);
-            					/*for (int i = 0; i < argSize; i++){
-    							printf("argv: %s \n", argv[i]);    			
-    						}*/
+        					close(fd[WRITE_END]);
             					execvp(cmd, argv);
             					fprintf(stderr, "Failed to execute second '%s'\n", cmd);
 	    					exit(1);
     					}
     					else{
-    						
     						int status;
        					close(fd[READ_END]);
         					close(fd[WRITE_END]);
        					waitpid(pid, &status, 0);
+       					bzero(cmd, 20);
        				}
     				}
     			}
