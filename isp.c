@@ -32,6 +32,7 @@ int main()
 	int mood = 2;
 	int N;
 	int len;
+	int count;
 	/*while (lop == 0){
 		check = false;
 		twoPart = false;
@@ -164,8 +165,11 @@ int main()
 		argSize = 0;
 		printf("\n isp$ ");
 		bzero(command, 20);
+		bzero(cmd, 20);
 		bzero(temp, 20);
     		scanf("%[^\n]%*c", command);
+    		//if (pipe(fd) == -1) { fprintf(stderr,"Pipe failed"); return 1;}
+		//if (pipe(fd1) == -1) { fprintf(stderr,"Pipe failed"); return 1;}
 		for (int i = 0; command[i] != '\0' && twoPart == false; i++){
 			if (i == 0 && (command[i] == ' ' || command[i] != ' ' )){
     				if (command[i] != ' '){
@@ -186,53 +190,52 @@ int main()
     				argSize++;
     			}
     			else if (command[i] == '|'){
-    				if (pipe(fd) == -1) { fprintf(stderr,"Pipe failed"); return 1;}
-    				if (pipe(fd1) == -1) { fprintf(stderr,"Pipe failed"); return 1;}
     				twoPart = true;
 				pid = fork();
 				if (pid < 0) { fprintf(stderr, "Fork failed"); return 1; }
+				if (pipe(fd) == -1) { fprintf(stderr,"Pipe failed"); return 1;}
 				if (pid == 0){ 
 					printf("cmd: %s \n", cmd);
-					for (int i = 0; i <= argSize; i++){
-				    			printf("argv: %s \n", argv[i]);
-				    			printf("size: %d \n", strlen(argv[i]));
-				    		}
 					argv[argSize] = NULL;
+					for (int j = 0; j <= argSize; j++){
+				    			printf("argv: %s \n", argv[j]);
+				    			printf("size: %d \n", strlen(argv[j]));
+				    	}
+					//close(fd[READ_END]);
 					dup2(fd[WRITE_END], STDOUT_FILENO);
-    					close(fd1[READ_END]);
-					close(fd1[WRITE_END]);
-    					close(fd[READ_END]);
 					close(fd[WRITE_END]);
+					close(fd[READ_END]);
     					execvp(cmd, argv);
     					fprintf(stderr, "Failed to execute first '%s'\n", cmd);
 					exit(1);
 				}
 				else {
-					wait(NULL);
-					close(fd[WRITE_END]);
-					len = read(fd[READ_END], temp1, 4024);
-					if (len < 0) {
-						perror("read error");
-					}
+					//wait(NULL);
+					if (pipe(fd1) == -1) { fprintf(stderr,"Pipe failed"); return 1;}
+					/*while (read(fd[READ_END], temp1, 1024) > 0)
+						write(fd1[WRITE_END], temp1, 1024);
 					close(fd[READ_END]);
+					close(fd1[WRITE_END]);
+					//close(fd[WRITE_END]);
+					//close(fd1[READ_END]);
 					printf("temp: %s \n", temp1);
 					len = write(fd1[WRITE_END], temp1, 4024);
 					if (len < 0) {
 						perror("read error");
 					}
 					close(fd1[WRITE_END]);
-					close(fd1[READ_END]);
-					printf("write: %s \n", fd1);
+					close(fd1[READ_END]);*/
 					pid = fork();
 					if (pid < 0) { fprintf(stderr, "Fork failed"); return 1; }
 					if (pid == 0){
-						read(fd1[READ_END], temp1, 1024);
-	    					close(fd1[READ_END]);
-						close(fd1[WRITE_END]);
-	    					if (len < 0) {
+						bzero(temp1, 20);
+						//close(fd1[WRITE_END]);
+						//len = read(fd1[READ_END], temp1, 4024);
+	    					//close(fd1[READ_END]);
+	    					/*if (len < 0) {
 							perror("read error");
 						}
-						printf("temp1: %s \n", temp1);
+						printf("temp1: %s \n", temp1);*/
 						bzero(cmd, 20);
 						argSize = 0;
 						for (int j = ++i; command[j] != '\0'; j++){
@@ -271,46 +274,47 @@ int main()
 						else
 	    						argv[argSize] = NULL;
 						printf("cmd: %s \n", cmd);
-						for (int i = 0; i <= argSize; i++){
-				    			printf("argv: %s \n", argv[i]);
-				    			printf("size: %d \n", strlen(argv[i]));
+						for (int l = 0; l <= argSize; l++){
+				    			printf("argv: %s \n", argv[l]);
+				    			printf("size: %d \n", strlen(argv[l]));
 				    		}
+				    		//close(fd1[WRITE_END]);
     						dup2(fd1[READ_END], STDIN_FILENO);
 						close(fd1[READ_END]);
 						close(fd1[WRITE_END]);
-       					close(fd[READ_END]);
-						close(fd[WRITE_END]);
-	    					execvp(cmd, argv);
+	    					execv(cmd, argv);
 	    					fprintf(stderr, "Failed to execute second '%s'\n", cmd);
 	    					exit(1);
     					}
     					else{
-    						int status;
+    						close(fd[WRITE_END]);
+    						while (read(fd[READ_END], temp1, 1) > 0){
+							write(fd1[WRITE_END], temp1, 1);
+							count++;
+						}
+						printf("temp1: %d \n", count);
+    						//int status;
        					close(fd[READ_END]);
-						close(fd[WRITE_END]);
-						close(fd1[READ_END]);
 						close(fd1[WRITE_END]);
-       					waitpid(pid, &status, 0);
        					bzero(cmd, 20);
        				}
 				}
     			}
     			else if (command[i] != ' ' && command[i] != '\0'){
 				strncat(temp, &command[i], 1); 
+				strcpy(*(argv + argSize), temp);
 			}
 			else{
-				strcpy(*(argv + argSize), temp);
 				argSize++;
 				bzero(temp, 20);
-				for (int i = 0; i <= argSize; i++){
-		    			printf("argv: %s \n", argv[i]);
-		    			printf("size: %d \n", strlen(argv[i]));	
-    		
-    				}
 			}
 		}
 		if (twoPart == false){
-			strcpy(*(argv + argSize), temp);
+			printf("cmd: %s \n", cmd);
+			for (int i = 0; i <= argSize; i++){
+    				printf("argv: %s \n", argv[i]);
+    				printf("size: %d \n", strlen(argv[i]));	
+    			}
 			argSize++;
 			argv[argSize] = NULL;
 			pid = fork();
@@ -322,8 +326,6 @@ int main()
 		    	}
 		    	wait(NULL);
 		}
-		bzero(cmd, 20);
-		bzero(temp, 20);
 	}
 }
 
