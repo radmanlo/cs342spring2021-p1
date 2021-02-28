@@ -17,7 +17,7 @@ int main()
 	int lop = 0;
  	char command[20];
  	char temp[20]; 
- 	char temp1[20];
+ 	char temp1[25];
  	char content;
  	char *cmd = malloc(20*sizeof(char));
 	char *argv[20];
@@ -192,50 +192,45 @@ int main()
     			else if (command[i] == '|'){
     				twoPart = true;
 				pid = fork();
-				if (pid < 0) { fprintf(stderr, "Fork failed"); return 1; }
 				if (pipe(fd) == -1) { fprintf(stderr,"Pipe failed"); return 1;}
+				if (pid < 0) { fprintf(stderr, "Fork failed"); return 1; }
+				
 				if (pid == 0){ 
+					///////////////////
+					//first child
+					///////////////////
+					
 					printf("cmd: %s \n", cmd);
 					argv[argSize] = NULL;
-					for (int j = 0; j <= argSize; j++){
+					/*for (int j = 0; j <= argSize; j++){
 				    			printf("argv: %s \n", argv[j]);
-				    			printf("size: %d \n", strlen(argv[j]));
-				    	}
-					//close(fd[READ_END]);
-					dup2(fd[WRITE_END], STDOUT_FILENO);
-					close(fd[WRITE_END]);
+				    			//printf("size: %d \n", strlen(argv[j]));
+				    	}*/
+				    	printf("\n for loop argv end \n");
+				    	
 					close(fd[READ_END]);
+				    	int m = dup2(fd[WRITE_END], 1);
+					if (m < 0){
+						perror("read error");
+					}
     					execvp(cmd, argv);
+					close(fd[WRITE_END]);
     					fprintf(stderr, "Failed to execute first '%s'\n", cmd);
+    					printf("\n before parent \n");
 					exit(1);
 				}
 				else {
-					//wait(NULL);
+					wait(NULL);
 					if (pipe(fd1) == -1) { fprintf(stderr,"Pipe failed"); return 1;}
-					/*while (read(fd[READ_END], temp1, 1024) > 0)
-						write(fd1[WRITE_END], temp1, 1024);
-					close(fd[READ_END]);
-					close(fd1[WRITE_END]);
-					//close(fd[WRITE_END]);
-					//close(fd1[READ_END]);
-					printf("temp: %s \n", temp1);
-					len = write(fd1[WRITE_END], temp1, 4024);
-					if (len < 0) {
-						perror("read error");
-					}
-					close(fd1[WRITE_END]);
-					close(fd1[READ_END]);*/
+
 					pid = fork();
 					if (pid < 0) { fprintf(stderr, "Fork failed"); return 1; }
 					if (pid == 0){
-						bzero(temp1, 20);
-						//close(fd1[WRITE_END]);
-						//len = read(fd1[READ_END], temp1, 4024);
-	    					//close(fd1[READ_END]);
-	    					/*if (len < 0) {
-							perror("read error");
-						}
-						printf("temp1: %s \n", temp1);*/
+					
+					///////////////////////
+					//second child
+					///////////////
+
 						bzero(cmd, 20);
 						argSize = 0;
 						for (int j = ++i; command[j] != '\0'; j++){
@@ -273,32 +268,47 @@ int main()
 						}
 						else
 	    						argv[argSize] = NULL;
+	    						
 						printf("cmd: %s \n", cmd);
-						for (int l = 0; l <= argSize; l++){
-				    			printf("argv: %s \n", argv[l]);
-				    			printf("size: %d \n", strlen(argv[l]));
-				    		}
-				    		//close(fd1[WRITE_END]);
-    						dup2(fd1[READ_END], STDIN_FILENO);
-						close(fd1[READ_END]);
+						close(fd[WRITE_END]);
+						close(fd[READ_END]);
 						close(fd1[WRITE_END]);
+				    		int m = dup2(fd1[READ_END], STDIN_FILENO);
+				    		execv(cmd, argv);
+						if (m < 0){
+							perror("read error");
+						}
 	    					execv(cmd, argv);
+	    					close(fd1[READ_END]);
 	    					fprintf(stderr, "Failed to execute second '%s'\n", cmd);
 	    					exit(1);
     					}
     					else{
-    						close(fd[WRITE_END]);
-    						while (read(fd[READ_END], temp1, 1) > 0){
-							write(fd1[WRITE_END], temp1, 1);
+    						//wait(NULL);
+    						
+    						printf("\n parent \n");
+						bzero(temp1, 25);
+					
+						printf("\n before read \n");
+    						
+						close(fd[WRITE_END]);
+						close(fd1[READ_END]);
+    						while (read(fd[READ_END], &temp1, 1) > 0){
+    							printf("temp1: %s after read \n", temp1);
+							write(fd1[WRITE_END], &temp1, 1);
 							count++;
 						}
-						printf("temp1: %d \n", count);
-    						//int status;
-       					close(fd[READ_END]);
-						close(fd1[WRITE_END]);
+						close(fd[READ_END]);
+						printf("temp1: %s after read \n", temp1);
+						printf("counter: %d after read \n", count);
        					bzero(cmd, 20);
        				}
 				}
+				close(fd[WRITE_END]);
+				close(fd1[READ_END]);
+				close(fd[READ_END]);	
+				close(fd1[WRITE_END]);
+				wait(NULL);
     			}
     			else if (command[i] != ' ' && command[i] != '\0'){
 				strncat(temp, &command[i], 1); 
@@ -311,10 +321,10 @@ int main()
 		}
 		if (twoPart == false){
 			printf("cmd: %s \n", cmd);
-			for (int i = 0; i <= argSize; i++){
+			/*for (int i = 0; i <= argSize; i++){
     				printf("argv: %s \n", argv[i]);
     				printf("size: %d \n", strlen(argv[i]));	
-    			}
+    			}*/
 			argSize++;
 			argv[argSize] = NULL;
 			pid = fork();
